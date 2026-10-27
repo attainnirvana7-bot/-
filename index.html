@@ -1,0 +1,744 @@
+<title>小安的上學路</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=LXGW+WenKai+TC:wght@400;700&family=Noto+Sans+TC:wght@500;700;900&display=swap">
+<style>
+/* 版面：上方是一天的路線圖，中間是會開動的馬路舞台，下方是停車後的識字題目。刻意採用單一明亮的繪本風格。 */
+:root {
+  color-scheme: light;
+  --bg: #EAF3EC;
+  --card: #FFFDF7;
+  --ink: #2B3A55;
+  --ink-soft: #5D6B85;
+  --line: #D5E2D8;
+  --car: #FF7A45;
+  --go: #2FA866;
+  --go-deep: #1F7F4B;
+  --stop: #E5484D;
+  --park: #2F6FD6;
+  --sun: #FFC83D;
+  --gold: #F5B301;
+  --road: #4C515D;
+  --font-word: "LXGW WenKai TC", "Kaiti TC", "BiauKai", "DFKai-SB", serif;
+  --font-ui: "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", system-ui, sans-serif;
+}
+@property --sky1 { syntax: "<color>"; inherits: true; initial-value: #F59E7C; }
+@property --sky2 { syntax: "<color>"; inherits: true; initial-value: #FDE1B6; }
+
+html, body { height: 100%; }
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-ui);
+  font-size: 16px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  -webkit-tap-highlight-color: transparent;
+}
+[hidden] { display: none !important; }
+button { font-family: inherit; color: inherit; cursor: pointer; }
+button:focus-visible { outline: 4px solid var(--park); outline-offset: 3px; }
+
+.app { max-width: 980px; margin: 0 auto; padding-block: 14px 28px; display: flex; flex-direction: column; gap: 14px; }
+
+/* 標題列 */
+.top { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.top h1 { margin: 0; font-family: var(--font-word); font-weight: 700; font-size: clamp(1.6rem, 4.5vw, 2.2rem); letter-spacing: .06em; text-wrap: balance; }
+.top h1 small { display: block; font-family: var(--font-ui); font-size: .8rem; font-weight: 500; color: var(--ink-soft); letter-spacing: .12em; }
+.toggles { display: flex; gap: 8px; }
+.pill { border: 2px solid var(--line); background: var(--card); border-radius: 999px; padding: 8px 14px; font-weight: 700; font-size: .95rem; display: inline-flex; align-items: center; gap: 6px; }
+.pill[aria-pressed="true"] { border-color: var(--go); background: #E3F5EA; color: var(--go-deep); }
+.pill svg { width: 18px; height: 18px; }
+
+/* 一天的路線 */
+.trip { background: var(--card); border: 2px solid var(--line); border-radius: 20px; padding: 12px 10px 10px; position: relative; }
+.track { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); position: relative; }
+.track::before { content: ""; position: absolute; left: 7%; right: 7%; top: 30px; height: 6px; border-radius: 3px; background: repeating-linear-gradient(90deg, var(--line) 0 10px, transparent 10px 16px); }
+.stop { display: flex; flex-direction: column; align-items: center; gap: 2px; position: relative; padding-top: 22px; min-width: 0; }
+.stop .dot { width: 22px; height: 22px; border-radius: 50%; background: var(--card); border: 3px solid var(--line); display: grid; place-items: center; position: relative; z-index: 1; transition: background .3s, border-color .3s; }
+.stop .dot svg { width: 14px; height: 14px; opacity: 0; transition: opacity .3s; }
+.stop .t { font-size: .78rem; font-weight: 700; color: var(--ink-soft); font-variant-numeric: tabular-nums; }
+.stop .w { font-family: var(--font-word); font-weight: 700; font-size: clamp(.8rem, 2.6vw, 1.05rem); min-height: 1.4em; color: transparent; white-space: nowrap; transition: color .3s; }
+.stop.now .dot { border-color: var(--car); box-shadow: 0 0 0 5px rgba(255,122,69,.2); }
+.stop.done .dot { background: var(--gold); border-color: var(--gold); }
+.stop.done.retry .dot { background: #BFC8D6; border-color: #BFC8D6; }
+.stop.done .dot svg { opacity: 1; }
+.stop.done .w { color: var(--ink); }
+.mini-car { position: absolute; top: 2px; left: 0; width: 34px; transform: translateX(-50%); transition: left 2.4s cubic-bezier(.45,0,.25,1); z-index: 2; pointer-events: none; }
+
+/* 馬路舞台 */
+.stage {
+  --sky1: #F59E7C; --sky2: #FDE1B6;
+  position: relative; height: clamp(180px, 30vh, 250px); border-radius: 24px; overflow: hidden;
+  background: linear-gradient(var(--sky1), var(--sky2));
+  transition: --sky1 1.6s ease, --sky2 1.6s ease;
+  border: 2px solid var(--line);
+}
+.sun { position: absolute; right: 12%; top: var(--sun-top, 58%); width: 52px; height: 52px; border-radius: 50%; background: var(--sun); box-shadow: 0 0 0 10px rgba(255,200,61,.28), 0 0 0 22px rgba(255,200,61,.12); transition: top 2s ease; }
+.cloud { position: absolute; height: 18px; border-radius: 999px; background: rgba(255,255,255,.85); }
+.cloud::before, .cloud::after { content: ""; position: absolute; background: inherit; border-radius: 50%; }
+.cloud::before { width: 26px; height: 26px; left: 12px; top: -12px; }
+.cloud::after { width: 20px; height: 20px; left: 30px; top: -8px; }
+.c1 { width: 70px; top: 18%; left: 8%; } .c2 { width: 56px; top: 30%; left: 52%; opacity: .8; }
+.hills, .town, .road { position: absolute; left: 0; right: 0; background-repeat: repeat-x; }
+.hills { bottom: 54px; height: 90px; background-position: 0 100%; background-size: 800px 90px; }
+.town { bottom: 54px; height: 110px; background-position: 0 100%; background-size: 520px 110px; }
+.road {
+  bottom: 0; height: 54px; border-top: 6px solid #D9D2BF;
+  background-image: linear-gradient(90deg, #F4F0E4 0 50%, transparent 50%), linear-gradient(#5A5F6B, var(--road));
+  background-size: 64px 5px, 100% 100%; background-position: 0 55%, 0 0; background-repeat: repeat-x, no-repeat;
+}
+.car { position: absolute; left: 12%; bottom: 6px; width: clamp(112px, 22vw, 150px); z-index: 3; }
+.car svg { display: block; width: 100%; height: auto; overflow: visible; }
+.car .wheel { transform-box: fill-box; transform-origin: center; }
+.car.moving .wheel { animation: spin .32s linear infinite; }
+.car.moving .car-body { animation: bob .28s ease-in-out infinite alternate; }
+.car.brake svg { animation: brake .55s ease-out; transform-origin: 90% 100%; }
+@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes bob { to { transform: translateY(-2px); } }
+@keyframes brake { 30% { transform: rotate(3deg) translateX(3px); } 70% { transform: rotate(-1deg); } }
+
+.sign { position: absolute; left: calc(12% + clamp(112px, 22vw, 150px) + 18px); bottom: 44px; display: flex; flex-direction: column; align-items: center; z-index: 2; }
+.sign .p { width: 42px; height: 42px; border-radius: 9px; background: var(--park); color: #fff; font: 900 1.7rem/42px var(--font-ui); text-align: center; border: 3px solid #fff; box-shadow: 0 2px 0 rgba(0,0,0,.15); }
+.sign .tm { margin-top: 4px; background: #fff; border: 2px solid var(--ink); border-radius: 8px; padding: 1px 7px; font: 900 .95rem/1.3 var(--font-ui); font-variant-numeric: tabular-nums; }
+.sign .pl { margin-top: 3px; background: #FFF4D6; border-radius: 6px; padding: 0 6px; font: 700 .72rem/1.5 var(--font-ui); color: var(--ink); }
+.sign .post { width: 6px; height: 40px; background: #8D96A6; border-radius: 3px; }
+
+.toast { position: absolute; left: 50%; top: 14px; transform: translate(-50%, -10px) scale(.8); opacity: 0; padding: 6px 18px; border-radius: 999px; color: #fff; font: 700 clamp(1.3rem, 4vw, 1.8rem)/1.3 var(--font-word); letter-spacing: .1em; z-index: 5; pointer-events: none; transition: opacity .25s, transform .25s; box-shadow: 0 4px 0 rgba(0,0,0,.15); }
+.toast.show { opacity: 1; transform: translate(-50%, 0) scale(1); }
+.toast.stop { background: var(--stop); }
+.toast.go { background: var(--go); }
+
+/* 下方面板 */
+.panel { background: var(--card); border: 2px solid var(--line); border-radius: 24px; padding: clamp(14px, 3vw, 24px); min-height: 300px; position: relative; overflow: hidden; }
+.quiz { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr); gap: clamp(14px, 3vw, 28px); align-items: center; }
+@media (max-width: 720px) { .quiz { grid-template-columns: minmax(0, 1fr); } }
+.scene-card { margin: 0; position: relative; border-radius: 18px; overflow: hidden; border: 3px solid var(--ink); background: #fff; aspect-ratio: 4 / 3; max-width: 100%; }
+.scene-card svg { display: block; width: 100%; height: 100%; }
+.clock { position: absolute; left: 10px; top: 10px; background: var(--ink); color: #FFE08A; border-radius: 8px; padding: 2px 9px; font: 700 .9rem/1.5 var(--font-ui); font-variant-numeric: tabular-nums; letter-spacing: .04em; z-index: 1; }
+.ask { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+.q { margin: 0; display: flex; align-items: center; gap: 10px; font-family: var(--font-word); font-weight: 700; font-size: clamp(1.4rem, 4vw, 1.9rem); }
+.ico { width: 44px; height: 44px; flex: none; border-radius: 50%; border: 2px solid var(--line); background: #fff; display: grid; place-items: center; padding: 0; }
+.ico svg { width: 22px; height: 22px; }
+.ico:active { transform: scale(.94); }
+.opts { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.opt { position: relative; min-width: 0; }
+.pick {
+  width: 100%; min-height: 128px; border-radius: 20px; border: 3px solid var(--ink); background: #fff;
+  box-shadow: 0 6px 0 var(--ink); padding: 18px 10px 14px; display: flex; align-items: center; justify-content: center;
+  transition: transform .12s, box-shadow .12s, background .2s, border-color .2s;
+}
+.pick:active { transform: translateY(4px); box-shadow: 0 2px 0 var(--ink); }
+.pick.right { background: #E3F5EA; border-color: var(--go-deep); box-shadow: 0 6px 0 var(--go-deep); animation: pop .45s; }
+.pick.wrong { background: #FDECEC; border-color: #C9A4A6; box-shadow: 0 6px 0 #C9A4A6; animation: shake .45s; opacity: .7; }
+.pick:disabled { cursor: default; }
+@keyframes pop { 40% { transform: scale(1.06); } }
+@keyframes shake { 20%, 60% { transform: translateX(-8px); } 40%, 80% { transform: translateX(8px); } }
+.listen { position: absolute; right: 6px; top: 6px; width: 34px; height: 34px; border-radius: 50%; border: 0; background: #EEF3FA; display: grid; place-items: center; padding: 0; }
+.listen svg { width: 18px; height: 18px; }
+
+.word { font-family: var(--font-word); font-weight: 700; font-size: clamp(2.1rem, 7vw, 3.2rem); line-height: 1.1; display: inline-flex; align-items: center; gap: .02em; white-space: nowrap; }
+.ch { display: inline-flex; align-items: center; }
+.zy { display: inline-flex; align-items: center; font-family: var(--font-ui); font-weight: 500; font-size: .26em; line-height: 1; margin-left: .06em; position: relative; color: var(--ink-soft); }
+.zy .sy { display: flex; flex-direction: column; align-items: center; }
+.zy .sy i { font-style: normal; display: block; line-height: 1.08; }
+.zy .tn { margin-left: .05em; align-self: flex-start; margin-top: .1em; }
+.zy .nt { position: absolute; left: 50%; top: -1em; transform: translateX(-50%); }
+body.no-zy .zy { display: none; }
+
+.fb { margin: 0; min-height: 3.2em; font-size: 1.05rem; line-height: 1.6; color: var(--ink-soft); }
+.fb .say { font-family: var(--font-word); font-size: clamp(1.2rem, 3.6vw, 1.5rem); color: var(--ink); font-weight: 700; }
+.fb mark { background: #FFE7A3; color: var(--ink); padding: 0 .15em; border-radius: 4px; }
+
+.go {
+  align-self: flex-start; display: inline-flex; align-items: center; gap: 12px;
+  border: 0; border-radius: 999px; background: var(--go); color: #fff; padding: 12px 24px 12px 14px;
+  font: 700 clamp(1.15rem, 3.4vw, 1.4rem)/1.2 var(--font-word); letter-spacing: .06em;
+  box-shadow: 0 6px 0 var(--go-deep); transition: transform .12s, box-shadow .12s;
+}
+.go:active { transform: translateY(4px); box-shadow: 0 2px 0 var(--go-deep); }
+.go .lamp { width: 34px; height: 34px; border-radius: 50%; background: #9BF0B8; box-shadow: 0 0 0 4px rgba(255,255,255,.35), 0 0 14px #9BF0B8; flex: none; }
+.go.pulse { animation: pulse 1.4s ease-in-out infinite; }
+@keyframes pulse { 50% { transform: scale(1.04); } }
+
+/* 開場與行駛中 */
+.intro { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr); gap: clamp(14px, 3vw, 28px); align-items: center; }
+@media (max-width: 720px) { .intro { grid-template-columns: minmax(0, 1fr); } }
+.intro h2, .finish h2 { margin: 0 0 8px; font-family: var(--font-word); font-size: clamp(1.6rem, 4.6vw, 2.2rem); text-wrap: balance; }
+.intro p, .finish p { margin: 0 0 16px; line-height: 1.75; color: var(--ink-soft); max-width: 34em; }
+.howto { list-style: none; margin: 0 0 18px; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.howto li { display: flex; align-items: center; gap: 10px; font-weight: 700; }
+.howto .b { width: 28px; height: 28px; border-radius: 7px; flex: none; display: grid; place-items: center; color: #fff; font-weight: 900; font-size: .95rem; }
+.wordlist { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 18px; padding: 0; list-style: none; }
+.wordlist li { font-family: var(--font-word); font-weight: 700; font-size: 1.15rem; background: #F2F6EF; border-radius: 10px; padding: 4px 10px; }
+
+.drive { display: flex; align-items: center; justify-content: center; gap: 22px; min-height: 260px; text-align: left; }
+.drive .wheel-ui { width: 96px; height: 96px; animation: steer 1.3s ease-in-out infinite alternate; }
+@keyframes steer { from { transform: rotate(-25deg); } to { transform: rotate(25deg); } }
+.drive .eyebrow { margin: 0; font-weight: 700; color: var(--ink-soft); letter-spacing: .14em; font-size: .9rem; }
+.drive .next { margin: 2px 0 0; font: 700 clamp(1.8rem, 6vw, 2.6rem)/1.2 var(--font-word); font-variant-numeric: tabular-nums; }
+
+.finish { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr); gap: clamp(14px, 3vw, 28px); align-items: center; }
+@media (max-width: 720px) { .finish { grid-template-columns: minmax(0, 1fr); } }
+.chips { list-style: none; margin: 0 0 18px; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); gap: 8px; }
+.chips li { display: flex; align-items: center; gap: 8px; background: #F7F9F4; border: 2px solid var(--line); border-radius: 14px; padding: 6px 10px; min-width: 0; }
+.chips li .word { font-size: 1.6rem; }
+.chips li svg { width: 20px; height: 20px; flex: none; }
+.chips button { border: 0; background: none; padding: 0; display: flex; align-items: center; gap: 8px; width: 100%; }
+
+.confetti { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
+.confetti i { position: absolute; top: -14px; width: 10px; height: 14px; border-radius: 2px; animation: fall 1.6s ease-in forwards; }
+@keyframes fall { to { transform: translate(var(--dx), 420px) rotate(var(--r)); opacity: 0; } }
+
+/* ===== 情境動畫 ===== */
+.scene .blink { animation: blink 3.2s infinite; }
+@keyframes blink { 0%, 92%, 100% { transform: scaleY(1); } 95% { transform: scaleY(.1); } }
+/* 起床 */
+.wk-sun { animation: wkSun 4s ease-in-out infinite; }
+@keyframes wkSun { 0% { transform: translateY(18px); } 45%, 100% { transform: translateY(-12px); } }
+.wk-armL { animation: wkArmL 4s ease-in-out infinite; }
+.wk-armR { animation: wkArmR 4s ease-in-out infinite; }
+@keyframes wkArmL { 0%, 38% { transform: rotate(-125deg); } 52%, 82% { transform: rotate(0); } 96%, 100% { transform: rotate(-125deg); } }
+@keyframes wkArmR { 0%, 38% { transform: rotate(125deg); } 52%, 82% { transform: rotate(0); } 96%, 100% { transform: rotate(125deg); } }
+.wk-closed { animation: wkClosed 4s infinite; }
+.wk-open { animation: wkOpen 4s infinite; }
+@keyframes wkClosed { 0%, 40% { opacity: 1; } 42%, 94% { opacity: 0; } 96%, 100% { opacity: 1; } }
+@keyframes wkOpen { 0%, 40% { opacity: 0; } 42%, 94% { opacity: 1; } 96%, 100% { opacity: 0; } }
+.wk-z { animation: wkZ 4s infinite; }
+@keyframes wkZ { 0% { opacity: 0; transform: translate(0, 8px); } 12% { opacity: 1; } 36% { opacity: 0; transform: translate(12px, -12px); } 100% { opacity: 0; } }
+.wk-clock { animation: ring .14s linear infinite alternate; }
+@keyframes ring { from { transform: rotate(-9deg); } to { transform: rotate(9deg); } }
+/* 刷牙 */
+.br-brush { animation: brush .26s ease-in-out infinite alternate; }
+@keyframes brush { from { transform: translateX(-5px); } to { transform: translateX(5px); } }
+.br-bub { animation: bubble 2s ease-out infinite; transform-box: fill-box; transform-origin: center; }
+@keyframes bubble { 0% { transform: translate(0, 0) scale(.4); opacity: 0; } 15% { opacity: 1; } 100% { transform: translate(var(--dx), -70px) scale(1.2); opacity: 0; } }
+/* 洗臉 */
+.ws-hands { animation: rub .38s ease-in-out infinite alternate; }
+@keyframes rub { from { transform: translateY(2px); } to { transform: translateY(-7px); } }
+.ws-water { animation: flow .5s linear infinite; }
+@keyframes flow { to { stroke-dashoffset: -24; } }
+.ws-drop { animation: drop 1.3s ease-out infinite; }
+@keyframes drop { 0% { transform: translate(0, 0); opacity: 0; } 15% { opacity: 1; } 100% { transform: translate(var(--dx), var(--dy)); opacity: 0; } }
+/* 換衣服 */
+.dr-uni { animation: drUni 4.6s ease-in-out infinite; }
+@keyframes drUni { 0%, 22% { transform: translateY(-120px); opacity: 0; } 30% { opacity: 1; } 46%, 90% { transform: translateY(0); opacity: 1; } 98%, 100% { transform: translateY(0); opacity: 0; } }
+.dr-pj { animation: drPj 4.6s infinite; }
+@keyframes drPj { 0%, 42% { opacity: 1; } 47%, 92% { opacity: 0; } 98%, 100% { opacity: 1; } }
+.dr-spark { animation: spark 4.6s infinite; transform-box: fill-box; transform-origin: center; }
+@keyframes spark { 0%, 46% { opacity: 0; transform: scale(.2); } 55% { opacity: 1; transform: scale(1.1); } 70% { opacity: 1; transform: scale(.9); } 82%, 100% { opacity: 0; transform: scale(.2); } }
+/* 出門 */
+.out-door { animation: door 5s ease-in-out infinite; }
+@keyframes door { 0%, 6% { transform: scaleX(1); } 18%, 86% { transform: scaleX(.14); } 96%, 100% { transform: scaleX(1); } }
+.out-boy { animation: walkOut 5s linear infinite; }
+@keyframes walkOut { 0%, 14% { transform: translateX(0); opacity: 0; } 20% { opacity: 1; } 80% { transform: translateX(160px); opacity: 1; } 88%, 100% { transform: translateX(170px); opacity: 0; } }
+.leg-l { animation: legL .5s ease-in-out infinite alternate; }
+.leg-r { animation: legL .5s ease-in-out infinite alternate-reverse; }
+@keyframes legL { from { transform: rotate(14deg); } to { transform: rotate(-14deg); } }
+.bob { animation: bobWalk .25s ease-in-out infinite alternate; }
+@keyframes bobWalk { to { transform: translateY(-3px); } }
+.wave { animation: wave .45s ease-in-out infinite alternate; }
+@keyframes wave { from { transform: rotate(-18deg); } to { transform: rotate(16deg); } }
+/* 到學校 */
+.sc-boy { animation: walkSchool 4.6s ease-in-out infinite; }
+@keyframes walkSchool { 0% { transform: translateX(0); opacity: 0; } 10% { opacity: 1; } 75%, 92% { transform: translateX(120px); opacity: 1; } 100% { transform: translateX(120px); opacity: 0; } }
+.sc-flag { animation: flag .8s ease-in-out infinite alternate; transform-box: fill-box; transform-origin: left center; }
+@keyframes flag { from { transform: skewY(-6deg) scaleX(.92); } to { transform: skewY(6deg) scaleX(1); } }
+/* 上課 */
+.cl-arm { animation: raise 3.4s ease-in-out infinite; }
+@keyframes raise { 0%, 25% { transform: rotate(135deg); } 40%, 78% { transform: rotate(0); } 92%, 100% { transform: rotate(135deg); } }
+.cl-star { animation: spark 3.4s infinite; transform-box: fill-box; transform-origin: center; animation-delay: -1s; }
+.cl-chalk { animation: chalk 3.4s steps(1) infinite; }
+@keyframes chalk { 0%, 30% { opacity: .35; } 31%, 100% { opacity: 1; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .confetti, .go.pulse, .car.moving .car-body { animation: none !important; }
+  .confetti { display: none; }
+  .drive .wheel-ui { animation: none; }
+}
+</style>
+
+<div class="app">
+  <header class="top">
+    <h1><small>幼兒識字闖關</small>小安的上學路</h1>
+    <div class="toggles">
+      <button class="pill" id="zyBtn" aria-pressed="true">注音</button>
+      <button class="pill" id="sndBtn" aria-pressed="true"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9h4l5-4v14l-5-4H4z" fill="currentColor"/><path d="M16 8.5a5 5 0 0 1 0 7M18.5 6a8.5 8.5 0 0 1 0 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>聲音</button>
+    </div>
+  </header>
+
+  <nav class="trip" aria-label="一天的行程">
+    <ol class="track" id="track"></ol>
+    <svg class="mini-car" id="miniCar" viewBox="0 0 40 22" aria-hidden="true"><path d="M3 15q0-4 4-4h5l4-6h10q4 0 6 6l4 1q2 1 2 4v2H3z" fill="#FF7A45"/><path d="M17 11l3-4h6q2 0 3 4z" fill="#CFEFFF"/><circle cx="11" cy="18" r="3.4" fill="#2E3440"/><circle cx="31" cy="18" r="3.4" fill="#2E3440"/></svg>
+  </nav>
+
+  <section class="stage" id="stage" aria-label="小汽車的馬路">
+    <div class="sun"></div>
+    <div class="cloud c1"></div><div class="cloud c2"></div>
+    <div class="hills" id="hills"></div>
+    <div class="town" id="town"></div>
+    <div class="road" id="road"></div>
+    <div class="car" id="car"></div>
+    <div class="toast" id="toast"></div>
+  </section>
+
+  <section class="panel" id="panel" aria-live="polite"></section>
+</div>
+
+<script>
+(() => {
+  const STOPS = [
+    { id: 'wake',   word: '起床',   zy: ['ㄑㄧˇ', 'ㄔㄨㄤˊ'],         time: '7:00', place: '小安家', q: '小安在做什麼？', say: '早上七點，小安(起床)了！',     sky: ['#F59E7C', '#FDE1B6'], sun: 58 },
+    { id: 'brush',  word: '刷牙',   zy: ['ㄕㄨㄚ', 'ㄧㄚˊ'],          time: '7:05', place: '小安家', q: '小安在做什麼？', say: '小安拿著牙刷，正在(刷牙)。',   sky: ['#F6B08A', '#FCE8C4'], sun: 50 },
+    { id: 'wash',   word: '洗臉',   zy: ['ㄒㄧˇ', 'ㄌㄧㄢˇ'],          time: '7:10', place: '小安家', q: '小安在做什麼？', say: '小安用清水(洗臉)，好乾淨！',   sky: ['#A3D2EC', '#FCE6C6'], sun: 42 },
+    { id: 'dress',  word: '換衣服', zy: ['ㄏㄨㄢˋ', 'ㄧ', '˙ㄈㄨ'],   time: '7:20', place: '小安家', q: '小安在做什麼？', say: '脫下睡衣，小安在(換衣服)。',   sky: ['#8FCBEE', '#E8F5FA'], sun: 34 },
+    { id: 'out',    word: '出門',   zy: ['ㄔㄨ', 'ㄇㄣˊ'],            time: '7:40', place: '家門口', q: '小安要做什麼？', say: '背好書包，小安要(出門)了！',   sky: ['#7DC2EC', '#DDF1FA'], sun: 26 },
+    { id: 'school', word: '到學校', zy: ['ㄉㄠˋ', 'ㄒㄩㄝˊ', 'ㄒㄧㄠˋ'], time: '8:00', place: '幼兒園', q: '小安去了哪裡？', say: '走呀走，小安(到學校)了！',     sky: ['#6CB8EA', '#D6EEFA'], sun: 18 },
+    { id: 'class',  word: '上課',   zy: ['ㄕㄤˋ', 'ㄎㄜˋ'],           time: '8:30', place: '幼兒園', q: '小安在做什麼？', say: '噹噹噹，小安開始(上課)囉！',   sky: ['#5EAFE8', '#D0EBFA'], sun: 12 },
+  ];
+  const byWord = Object.fromEntries(STOPS.map(s => [s.word, s]));
+
+  const C = { skin: '#F9CFA8', hair: '#3A2A22', cheek: '#F49A8C', ink: '#2B3A55', pj: '#7FB2E5', pjDot: '#D8E9FA', uni: '#FFD35C', pants: '#3F5A8A', shoe: '#E5484D', bag: '#E5484D' };
+
+  /* ---------- 小男孩零件（腳底在 0,0） ---------- */
+  function head(o = {}) {
+    const eyesOpen = `<g class="${o.blink ? 'blink' : ''}" style="transform-origin:0px -126px"><circle cx="-11" cy="-126" r="3.8" fill="${C.ink}"/><circle cx="11" cy="-126" r="3.8" fill="${C.ink}"/><circle cx="-9.8" cy="-127.4" r="1.2" fill="#fff"/><circle cx="12.2" cy="-127.4" r="1.2" fill="#fff"/></g>`;
+    const eyesShut = `<g fill="none" stroke="${C.ink}" stroke-width="2.6" stroke-linecap="round"><path d="M-15,-126 q4,4 8,0"/><path d="M7,-126 q4,4 8,0"/></g>`;
+    let eyes = eyesOpen;
+    if (o.eyes === 'shut') eyes = eyesShut;
+    if (o.eyes === 'wake') eyes = `<g class="wk-closed">${eyesShut}</g><g class="wk-open">${eyesOpen}</g>`;
+    const mouths = {
+      smile: `<path d="M-7,-114 q7,7 14,0" fill="none" stroke="${C.ink}" stroke-width="2.6" stroke-linecap="round"/>`,
+      o: `<ellipse cx="0" cy="-112" rx="4.5" ry="4" fill="#C0504D"/>`,
+      grin: `<path d="M-9,-115 q9,12 18,0z" fill="#C0504D"/>`,
+    };
+    return `<g>
+      <circle cx="-29" cy="-125" r="6" fill="${C.skin}"/><circle cx="29" cy="-125" r="6" fill="${C.skin}"/>
+      <circle cx="0" cy="-128" r="29" fill="${C.skin}"/>
+      <path d="M-30,-126 C-34,-158 -14,-164 0,-163 C18,-164 35,-156 30,-126 C27,-138 20,-143 12,-143 C6,-139 -4,-147 -10,-142 C-18,-145 -26,-138 -30,-126Z" fill="${C.hair}"/>
+      ${eyes}
+      <ellipse cx="-18" cy="-117" rx="5" ry="3" fill="${C.cheek}" opacity=".75"/><ellipse cx="18" cy="-117" rx="5" ry="3" fill="${C.cheek}" opacity=".75"/>
+      ${mouths[o.mouth || 'smile']}
+    </g>`;
+  }
+  function legs(walk) {
+    return `<g class="${walk ? 'leg-l' : ''}" style="transform-origin:-8px -44px"><rect x="-16" y="-46" width="14" height="42" rx="6" fill="${C.pants}"/><ellipse cx="-10" cy="-3" rx="10" ry="5" fill="${C.shoe}"/></g>
+            <g class="${walk ? 'leg-r' : ''}" style="transform-origin:8px -44px"><rect x="2" y="-46" width="14" height="42" rx="6" fill="${C.pants}"/><ellipse cx="10" cy="-3" rx="10" ry="5" fill="${C.shoe}"/></g>`;
+  }
+  function torso(kind) {
+    if (kind === 'pj') {
+      return `<rect x="-24" y="-98" width="48" height="58" rx="15" fill="${C.pj}"/>
+        <g fill="${C.pjDot}"><circle cx="-12" cy="-84" r="2.6"/><circle cx="6" cy="-78" r="2.6"/><circle cx="-4" cy="-64" r="2.6"/><circle cx="14" cy="-58" r="2.6"/><circle cx="-14" cy="-52" r="2.6"/></g>`;
+    }
+    return `<rect x="-24" y="-98" width="48" height="58" rx="15" fill="${C.uni}"/>
+      <path d="M-13,-98 L0,-86 L13,-98Z" fill="#fff"/><path d="M-5,-90 L0,-84 L5,-90 L0,-87Z" fill="${C.shoe}"/>
+      <rect x="5" y="-78" width="13" height="8" rx="2" fill="#fff"/><rect x="7" y="-75.5" width="9" height="2" fill="${C.shoe}"/>`;
+  }
+  function arm(side, to, color, cls = '', extra = '') {
+    const sx = side * 17, sy = -88;
+    return `<g class="${cls}" style="transform-origin:${sx}px ${sy}px"><path d="M${sx},${sy} L${to[0]},${to[1]}" stroke="${color}" stroke-width="12" stroke-linecap="round"/>${extra}<circle cx="${to[0]}" cy="${to[1]}" r="6.5" fill="${C.skin}"/></g>`;
+  }
+  const bagBack = `<rect x="-29" y="-94" width="58" height="48" rx="12" fill="${C.bag}"/>`;
+  const bagStraps = `<path d="M-13,-97 V-58 M13,-97 V-58" stroke="#B83236" stroke-width="5" stroke-linecap="round"/>`;
+  const at = (x, y, s, inner) => `<g transform="translate(${x} ${y}) scale(${s})">${inner}</g>`;
+  const star = (x, y, r, fill, cls = '') => {
+    let d = '';
+    for (let i = 0; i < 10; i++) { const a = Math.PI / 5 * i - Math.PI / 2, rr = i % 2 ? r * .45 : r; d += (i ? 'L' : 'M') + (x + Math.cos(a) * rr).toFixed(1) + ',' + (y + Math.sin(a) * rr).toFixed(1); }
+    return `<path class="${cls}" d="${d}Z" fill="${fill}"/>`;
+  };
+
+  /* ---------- 七個情境 ---------- */
+  const SCENES = {
+    wake: () => `
+      <defs><clipPath id="wk-win"><rect x="200" y="26" width="94" height="74" rx="6"/></clipPath></defs>
+      <rect width="320" height="240" fill="#FCE7C6"/><rect y="206" width="320" height="34" fill="#E0B583"/>
+      <g clip-path="url(#wk-win)"><rect x="200" y="26" width="94" height="74" fill="#FFD9A8"/><circle class="wk-sun" cx="247" cy="84" r="15" fill="#FFB547"/><path d="M200,100 Q230,80 262,92 T300,86 V100Z" fill="#9CCB8F"/></g>
+      <rect x="200" y="26" width="94" height="74" rx="6" fill="none" stroke="#B9824E" stroke-width="6"/><line x1="247" y1="26" x2="247" y2="100" stroke="#B9824E" stroke-width="4"/>
+      <rect x="20" y="104" width="18" height="104" rx="6" fill="#9A6A43"/>
+      <rect x="32" y="166" width="186" height="26" rx="8" fill="#fff"/><rect x="32" y="188" width="186" height="14" rx="4" fill="#9A6A43"/><rect x="208" y="150" width="14" height="58" rx="5" fill="#9A6A43"/>
+      <ellipse cx="62" cy="158" rx="22" ry="11" fill="#fff" stroke="#EADBC6" stroke-width="2"/>
+      ${at(114, 200, .9, `${torso('pj')}${head({ eyes: 'wake', mouth: 'o' })}${arm(-1, [-36, -126], C.pj, 'wk-armL')}${arm(1, [36, -126], C.pj, 'wk-armR')}`)}
+      <path d="M40,156 Q120,144 216,154 L216,196 L40,196Z" fill="#F28C8C"/>
+      <g fill="#FBC3C3"><circle cx="70" cy="172" r="4"/><circle cx="104" cy="182" r="4"/><circle cx="140" cy="170" r="4"/><circle cx="176" cy="182" r="4"/><circle cx="200" cy="166" r="4"/></g>
+      <text class="wk-z" x="150" y="62" font-family="Noto Sans TC, sans-serif" font-weight="900" font-size="20" fill="#7B8DB5">Z<tspan font-size="15" dy="-8">z</tspan><tspan font-size="11" dy="-7">z</tspan></text>
+      <rect x="238" y="170" width="56" height="38" rx="4" fill="#C99A6A"/><rect x="246" y="182" width="40" height="4" rx="2" fill="#A97B4E"/>
+      <g class="wk-clock" style="transform-origin:266px 152px">
+        <circle cx="253" cy="137" r="6" fill="#F2C14E"/><circle cx="279" cy="137" r="6" fill="#F2C14E"/>
+        <circle cx="266" cy="152" r="16" fill="#E5484D"/><circle cx="266" cy="152" r="12" fill="#fff"/>
+        <path d="M266,152 V144 M266,152 L272,155" stroke="${C.ink}" stroke-width="2" stroke-linecap="round"/>
+        <path d="M256,166 l-4,4 M276,166 l4,4" stroke="#E5484D" stroke-width="3" stroke-linecap="round"/>
+      </g>
+      <path d="M240,130 l-8,-6 M244,122 l-4,-9 M292,130 l8,-6 M288,122 l4,-9" stroke="#E5484D" stroke-width="2.5" stroke-linecap="round"/>`,
+
+    brush: () => `
+      <defs><pattern id="br-tile" width="24" height="24" patternUnits="userSpaceOnUse"><rect width="24" height="24" fill="#DCEFF4"/><path d="M24,0 V24 H0" fill="none" stroke="#C3E0E8" stroke-width="2"/></pattern></defs>
+      <rect width="320" height="240" fill="url(#br-tile)"/>
+      <rect x="208" y="24" width="88" height="96" rx="44" fill="#F1FAFD" stroke="#9CC7D3" stroke-width="5"/><path d="M232,52 l14,-14 M236,66 l26,-26" stroke="#fff" stroke-width="5" stroke-linecap="round"/>
+      ${at(130, 248, 1, `${torso('pj')}${head({ blink: true, mouth: 'o' })}
+        <g fill="#fff" stroke="#DCEAF0" stroke-width="1"><circle cx="-6" cy="-109" r="3.5"/><circle cx="5" cy="-108" r="3"/><circle cx="-1" cy="-104" r="2.6"/></g>
+        ${arm(-1, [-28, -54], C.pj)}
+        <g class="br-brush">${arm(1, [16, -110], C.pj, '', `<rect x="-12" y="-114" width="56" height="6" rx="3" fill="#4FB3A9"/><rect x="-14" y="-120" width="12" height="6" rx="1.5" fill="#fff" stroke="#BCD" stroke-width="1"/>`)}</g>`)}
+      <g fill="rgba(255,255,255,.85)" stroke="#9CC7D3" stroke-width="1.5">
+        <circle class="br-bub" style="--dx:-14px;animation-delay:0s" cx="120" cy="134" r="5"/>
+        <circle class="br-bub" style="--dx:10px;animation-delay:.5s" cx="132" cy="136" r="4"/>
+        <circle class="br-bub" style="--dx:-4px;animation-delay:1s" cx="126" cy="132" r="6"/>
+        <circle class="br-bub" style="--dx:16px;animation-delay:1.5s" cx="136" cy="134" r="3.5"/>
+      </g>
+      <rect y="196" width="320" height="44" fill="#F4F4F0"/><rect y="196" width="320" height="6" fill="#D8D8CF"/>
+      <ellipse cx="250" cy="206" rx="40" ry="7" fill="#CFE3EA"/>
+      <rect x="40" y="172" width="24" height="26" rx="4" fill="#F28C8C"/><rect x="46" y="160" width="4" height="16" rx="2" fill="#F6B93B"/>
+      <path d="M72,190 h34 l6,4 h-46z" fill="#fff" stroke="#BCD" stroke-width="1.5"/><rect x="106" y="188" width="8" height="8" rx="2" fill="#2F6FD6"/>`,
+
+    wash: () => `
+      <defs><pattern id="ws-tile" width="24" height="24" patternUnits="userSpaceOnUse"><rect width="24" height="24" fill="#E1F3E6"/><path d="M24,0 V24 H0" fill="none" stroke="#C6E6CF" stroke-width="2"/></pattern></defs>
+      <rect width="320" height="240" fill="url(#ws-tile)"/>
+      <circle cx="278" cy="36" r="4" fill="#8D96A6"/><rect x="262" y="40" width="32" height="62" rx="5" fill="#F6B93B"/><rect x="262" y="84" width="32" height="6" fill="#E59A1E"/>
+      ${at(118, 248, 1, `${torso('pj')}${head({ eyes: 'shut', mouth: 'o' })}<g class="ws-hands">${arm(-1, [-17, -112], C.pj)}${arm(1, [17, -112], C.pj)}</g>`)}
+      <g fill="#6EC6F0">
+        <ellipse class="ws-drop" style="--dx:-30px;--dy:-14px" cx="96" cy="128" rx="3" ry="4"/>
+        <ellipse class="ws-drop" style="--dx:28px;--dy:-18px;animation-delay:.4s" cx="140" cy="126" rx="3" ry="4"/>
+        <ellipse class="ws-drop" style="--dx:-24px;--dy:20px;animation-delay:.8s" cx="98" cy="138" rx="2.5" ry="3.5"/>
+        <ellipse class="ws-drop" style="--dx:26px;--dy:22px;animation-delay:.2s" cx="138" cy="138" rx="2.5" ry="3.5"/>
+        <ellipse class="ws-drop" style="--dx:0px;--dy:-30px;animation-delay:.6s" cx="118" cy="98" rx="2.5" ry="3.5"/>
+      </g>
+      <rect y="196" width="320" height="44" fill="#F4F4F0"/><rect y="196" width="320" height="6" fill="#D8D8CF"/>
+      <ellipse cx="226" cy="206" rx="42" ry="7" fill="#CFE3EA"/>
+      <rect x="206" y="148" width="12" height="50" rx="4" fill="#AEB7C4"/><path d="M206,150 h30 q8,0 8,8 v4 h-8 v-4 h-30z" fill="#AEB7C4"/>
+      <line class="ws-water" x1="240" y1="164" x2="240" y2="202" stroke="#6EC6F0" stroke-width="5" stroke-linecap="round" stroke-dasharray="8 4"/>`,
+
+    dress: () => `
+      <rect width="320" height="240" fill="#EEE6F7"/><rect y="208" width="320" height="32" fill="#D9C7EA"/>
+      <ellipse cx="118" cy="214" rx="70" ry="10" fill="#C7AEDF"/>
+      <rect x="218" y="36" width="84" height="174" rx="6" fill="#B98A5E"/><line x1="260" y1="40" x2="260" y2="206" stroke="#946B44" stroke-width="3"/>
+      <circle cx="252" cy="124" r="3.5" fill="#F2C14E"/><circle cx="268" cy="124" r="3.5" fill="#F2C14E"/>
+      ${at(118, 210, .95, `${legs(false)}
+        <g class="dr-pj">${torso('pj')}${arm(-1, [-30, -52], C.pj)}${arm(1, [30, -52], C.pj)}</g>
+        <g class="dr-uni">${torso('uni')}${arm(-1, [-30, -52], C.uni)}${arm(1, [30, -52], C.uni)}</g>
+        ${head({ blink: true, mouth: 'grin' })}`)}
+      ${star(64, 92, 10, '#F5B301', 'dr-spark')}${star(176, 70, 8, '#F5B301', 'dr-spark')}${star(170, 150, 7, '#fff', 'dr-spark')}
+      <path d="M70,184 q14,-12 30,0 q8,6 18,0 l-4,14 h-40z" fill="${C.pj}" opacity=".9"/>`,
+
+    out: () => `
+      <rect width="320" height="240" fill="#CFEAF7"/><rect y="200" width="320" height="40" fill="#9CCB7C"/>
+      <path d="M100,240 Q120,214 112,200 H140 Q150,214 300,240Z" fill="#E8D8B8"/>
+      <rect x="10" y="40" width="160" height="164" fill="#F6D7A7"/><rect x="0" y="26" width="180" height="20" rx="4" fill="#D9734E"/>
+      <rect x="124" y="70" width="34" height="32" rx="3" fill="#BFE3F2" stroke="#fff" stroke-width="4"/>
+      <rect x="48" y="94" width="66" height="112" rx="4" fill="#5A4030"/>
+      <rect class="out-door" style="transform-origin:48px 150px" x="48" y="94" width="66" height="112" rx="4" fill="#C9473D"/>
+      <circle cx="104" cy="152" r="4" fill="#F2C14E"/>
+      <g fill="#5DB36A"><circle cx="270" cy="196" r="20"/><circle cx="292" cy="200" r="15"/></g><g fill="#F28C8C"><circle cx="266" cy="190" r="3.5"/><circle cx="284" cy="198" r="3.5"/></g>
+      <g class="out-boy"><g class="bob">${at(81, 214, .78, `${bagBack}${legs(true)}${torso('uni')}${bagStraps}${head({ blink: true, mouth: 'grin' })}${arm(-1, [-28, -54], C.uni)}${arm(1, [34, -128], C.uni, 'wave')}`)}</g></g>`,
+
+    school: () => `
+      <rect width="320" height="240" fill="#CDEBFA"/><rect y="206" width="320" height="34" fill="#9CCB7C"/>
+      <path d="M0,222 H320" stroke="#E8D8B8" stroke-width="14"/>
+      <g fill="#5DB36A"><rect x="26" y="150" width="8" height="58" fill="#8A5A3B"/><circle cx="30" cy="140" r="26"/></g>
+      <rect x="160" y="70" width="146" height="138" fill="#F7B267"/><path d="M150,74 L233,30 L316,74Z" fill="#E07A5F"/>
+      <circle cx="233" cy="60" r="11" fill="#fff" stroke="${C.ink}" stroke-width="2"/><path d="M233,60 V53 M233,60 L238,62" stroke="${C.ink}" stroke-width="2" stroke-linecap="round"/>
+      <rect x="196" y="78" width="74" height="22" rx="6" fill="#fff"/><text x="233" y="95" text-anchor="middle" font-family="LXGW WenKai TC, serif" font-weight="700" font-size="16" fill="${C.ink}">幼兒園</text>
+      <g fill="#BFE3F2" stroke="#fff" stroke-width="3"><rect x="172" y="112" width="30" height="26" rx="3"/><rect x="264" y="112" width="30" height="26" rx="3"/></g>
+      <rect x="212" y="140" width="42" height="68" rx="20" fill="#7A5240"/>
+      <rect x="128" y="40" width="4" height="168" fill="#8D96A6"/>
+      <g class="sc-flag"><path d="M132,42 L170,53 L132,64Z" fill="#2F6FD6"/><path d="M132,50 L156,53 L132,56Z" fill="#FFE08A"/></g>
+      <g class="sc-boy"><g class="bob">${at(40, 222, .6, `${bagBack}${legs(true)}${torso('uni')}${bagStraps}${head({ blink: true, mouth: 'grin' })}${arm(-1, [-28, -54], C.uni)}${arm(1, [28, -54], C.uni)}`)}</g></g>`,
+
+    class: () => `
+      <rect width="320" height="240" fill="#FFF4D6"/><rect y="214" width="320" height="26" fill="#E7C998"/>
+      <rect x="34" y="20" width="252" height="96" rx="6" fill="#2F5D50" stroke="#A97B4E" stroke-width="6"/>
+      <g class="cl-chalk" font-family="Noto Sans TC, sans-serif" font-weight="700" fill="#F4F0E4"><text x="58" y="66" font-size="28">ㄅ ㄆ ㄇ</text><text x="182" y="96" font-size="22">1+1=2</text></g>
+      <path d="M60,100 q30,-10 60,0" stroke="#F4F0E4" stroke-width="2" fill="none" opacity=".6"/>
+      ${at(160, 262, 1, `${torso('uni')}${head({ blink: true, mouth: 'grin' })}${arm(-1, [-30, -64], C.uni)}${arm(1, [24, -154], C.uni, 'cl-arm')}`)}
+      ${star(196, 92, 9, '#F5B301', 'cl-star')}
+      <rect x="70" y="196" width="180" height="16" rx="4" fill="#C98E52"/><rect x="84" y="212" width="10" height="28" fill="#A97B4E"/><rect x="226" y="212" width="10" height="28" fill="#A97B4E"/>
+      <path d="M118,196 l22,-8 l22,8z" fill="#fff" stroke="#BCD" stroke-width="1.5"/><path d="M140,188 v8" stroke="#BCD" stroke-width="1.5"/>`,
+  };
+  const sceneSVG = (id, label) => `<svg class="scene" viewBox="0 0 320 240" role="img" aria-label="${label}">${SCENES[id]()}</svg>`;
+
+  /* ---------- 圖示 ---------- */
+  const ICON = {
+    speaker: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9h4l5-4v14l-5-4H4z" fill="${C.ink}"/><path d="M16 8.5a5 5 0 0 1 0 7" fill="none" stroke="${C.ink}" stroke-width="2.2" stroke-linecap="round"/></svg>`,
+    star: (fill) => `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5l2.9 6 6.6.8-4.9 4.6 1.3 6.6L12 17.3 6.1 20.5l1.3-6.6L2.5 9.3l6.6-.8z" fill="${fill}"/></svg>`,
+    wheel: `<svg class="wheel-ui" viewBox="0 0 100 100" aria-hidden="true"><circle cx="50" cy="50" r="42" fill="none" stroke="${C.ink}" stroke-width="10"/><circle cx="50" cy="50" r="11" fill="#FF7A45"/><path d="M50,39 V10 M40,56 L15,70 M60,56 L85,70" stroke="${C.ink}" stroke-width="9" stroke-linecap="round"/></svg>`,
+  };
+
+  const CAR_SVG = `<svg viewBox="0 0 160 92" aria-hidden="true">
+    <defs><clipPath id="carwin"><path d="M58,44 Q66,27 82,26 L102,26 Q114,26 121,44Z"/></clipPath></defs>
+    <ellipse cx="84" cy="87" rx="70" ry="5" fill="rgba(0,0,0,.18)"/>
+    <g class="car-body">
+      <path d="M12,64 Q12,48 28,46 L50,44 Q60,20 82,19 L104,19 Q122,19 130,42 L146,47 Q155,50 155,62 L155,68 Q155,72 151,72 L16,72 Q12,72 12,68Z" fill="#FF7A45"/>
+      <path d="M58,44 Q66,27 82,26 L102,26 Q114,26 121,44Z" fill="#CFEFFF"/>
+      <g clip-path="url(#carwin)"><circle cx="92" cy="42" r="12" fill="${C.skin}"/><path d="M80,40 Q80,27 92,27 Q104,27 104,39 Q98,33 90,34 Q84,33 80,40Z" fill="${C.hair}"/><circle cx="98" cy="41" r="1.9" fill="${C.ink}"/><ellipse cx="99" cy="46" rx="3" ry="1.8" fill="${C.cheek}"/></g>
+      <line x1="88" y1="46" x2="88" y2="70" stroke="#E0602E" stroke-width="2"/><rect x="96" y="52" width="10" height="3" rx="1.5" fill="#E0602E"/>
+      <rect x="148" y="52" width="7" height="7" rx="2" fill="#FFE08A"/><rect x="12" y="52" width="5" height="8" rx="2" fill="#E5484D"/>
+    </g>
+    <g class="wheel"><circle cx="42" cy="72" r="14" fill="#2E3440"/><circle cx="42" cy="72" r="6.5" fill="#D6DCE4"/><path d="M42,62 V82 M32,72 H52" stroke="#D6DCE4" stroke-width="2.5"/></g>
+    <g class="wheel"><circle cx="126" cy="72" r="14" fill="#2E3440"/><circle cx="126" cy="72" r="6.5" fill="#D6DCE4"/><path d="M126,62 V82 M116,72 H136" stroke="#D6DCE4" stroke-width="2.5"/></g>
+  </svg>`;
+
+  const TOWN = `<svg xmlns='http://www.w3.org/2000/svg' width='520' height='110' viewBox='0 0 520 110'>
+    <rect y='96' width='520' height='14' fill='#8CC97A'/>
+    <rect x='36' y='64' width='8' height='34' fill='#8A5A3B'/><circle cx='40' cy='54' r='22' fill='#5DB36A'/><circle cx='28' cy='64' r='13' fill='#6CC27A'/>
+    <rect x='90' y='50' width='70' height='48' fill='#F7C59F'/><path d='M84 52 L125 22 L166 52Z' fill='#E07A5F'/><rect x='100' y='62' width='18' height='14' fill='#BFE3F2'/><rect x='134' y='70' width='14' height='28' fill='#A0674B'/>
+    <rect x='200' y='40' width='4' height='58' fill='#7C8696'/><circle cx='202' cy='38' r='6' fill='#FFE08A'/>
+    <rect x='236' y='30' width='62' height='68' fill='#A8D5E2'/><rect x='232' y='24' width='70' height='10' fill='#5B8FB9'/>
+    <g fill='#fff'><rect x='246' y='42' width='12' height='12'/><rect x='276' y='42' width='12' height='12'/><rect x='246' y='64' width='12' height='12'/><rect x='276' y='64' width='12' height='12'/></g>
+    <circle cx='344' cy='86' r='14' fill='#6CC27A'/><circle cx='362' cy='88' r='11' fill='#5DB36A'/>
+    <rect x='392' y='56' width='60' height='42' fill='#FFE29A'/><path d='M386 58 L422 32 L458 58Z' fill='#C97B63'/><rect x='402' y='66' width='14' height='12' fill='#BFE3F2'/><rect x='428' y='72' width='12' height='26' fill='#A0674B'/>
+    <rect x='484' y='70' width='7' height='28' fill='#8A5A3B'/><circle cx='488' cy='62' r='17' fill='#5DB36A'/>
+  </svg>`;
+  const HILLS = `<svg xmlns='http://www.w3.org/2000/svg' width='800' height='90' viewBox='0 0 800 90'>
+    <path d='M0 90 V50 Q100 10 200 45 T400 40 T600 45 T800 50 V90Z' fill='#BFE2AE'/>
+    <path d='M0 90 V70 Q150 40 300 66 T600 62 T800 70 V90Z' fill='#A6D598'/>
+  </svg>`;
+  const dataUri = s => `url("data:image/svg+xml,${encodeURIComponent(s.replace(/\s+/g, ' '))}")`;
+
+  /* ---------- 文字與注音 ---------- */
+  function zySpan(z) {
+    let s = z, neutral = false, tone = '';
+    if (s[0] === '˙') { neutral = true; s = s.slice(1); }
+    if ('ˊˇˋ'.includes(s[s.length - 1])) { tone = s[s.length - 1]; s = s.slice(0, -1); }
+    return `<span class="zy" aria-hidden="true">${neutral ? '<span class="nt">˙</span>' : ''}<span class="sy">${[...s].map(x => `<i>${x}</i>`).join('')}</span>${tone ? `<span class="tn">${tone}</span>` : ''}</span>`;
+  }
+  function wordHTML(w) {
+    const s = byWord[w];
+    return `<span class="word" lang="zh-Hant-TW">${[...w].map((c, i) => `<span class="ch"><span class="hz">${c}</span>${zySpan(s.zy[i])}</span>`).join('')}</span>`;
+  }
+
+  /* ---------- 聲音 ---------- */
+  let soundOn = true, zyOn = true, actx = null, voices = [];
+  const loadVoices = () => { try { voices = speechSynthesis.getVoices(); } catch (e) {} };
+  try { loadVoices(); speechSynthesis.onvoiceschanged = loadVoices; } catch (e) {}
+  function say(text) {
+    if (!soundOn) return;
+    try {
+      speechSynthesis.cancel();
+      const u = new SpeechSynthesisUtterance(text);
+      u.lang = 'zh-TW'; u.rate = .82; u.pitch = 1.15;
+      const v = voices.find(v => /zh[-_]TW/i.test(v.lang)) || voices.find(v => /zh[-_](HK|Hant)/i.test(v.lang)) || voices.find(v => /^zh/i.test(v.lang));
+      if (v) u.voice = v;
+      speechSynthesis.speak(u);
+    } catch (e) {}
+  }
+  function audio() {
+    if (!actx) { try { actx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { return null; } }
+    if (actx.state === 'suspended') actx.resume();
+    return actx;
+  }
+  function tone(freq, start, dur, type = 'sine', vol = .12, toFreq) {
+    const a = audio(); if (!a || !soundOn) return;
+    const t = a.currentTime + start, o = a.createOscillator(), g = a.createGain();
+    o.type = type; o.frequency.setValueAtTime(freq, t);
+    if (toFreq) o.frequency.exponentialRampToValueAtTime(toFreq, t + dur);
+    g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(vol, t + .02); g.gain.exponentialRampToValueAtTime(.001, t + dur);
+    o.connect(g).connect(a.destination); o.start(t); o.stop(t + dur + .05);
+  }
+  const sfx = {
+    honk: () => { [0, .22].forEach(s => { tone(440, s, .16, 'square', .06); tone(554, s, .16, 'square', .05); }); },
+    engine: (d) => { tone(60, 0, d * .5, 'sawtooth', .035, 150); tone(150, d * .5, d * .5, 'sawtooth', .03, 70); },
+    brake: () => tone(900, 0, .3, 'triangle', .04, 500),
+    right: () => [523, 659, 784, 1047].forEach((f, i) => tone(f, i * .09, .3, 'triangle', .12)),
+    wrong: () => tone(260, 0, .35, 'triangle', .1, 170),
+  };
+
+  /* ---------- 畫面元素 ---------- */
+  const $ = s => document.querySelector(s);
+  const stage = $('#stage'), panel = $('#panel'), car = $('#car'), toastEl = $('#toast');
+  const town = $('#town'), hills = $('#hills'), road = $('#road'), miniCar = $('#miniCar');
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  car.innerHTML = CAR_SVG;
+  town.style.backgroundImage = dataUri(TOWN);
+  hills.style.backgroundImage = dataUri(HILLS);
+
+  let idx = -1, results = [], tries = 0, opts = [], busy = false, sign = null;
+  const off = { town: 0, hills: 0, road: 0 };
+
+  function renderTrack() {
+    $('#track').innerHTML = STOPS.map((s, i) => {
+      const r = results[i];
+      const cls = ['stop', i === idx && r == null ? 'now' : '', r != null ? 'done' : '', r === 'retry' ? 'retry' : ''].join(' ');
+      return `<li class="${cls}"><span class="dot">${ICON.star('#fff')}</span><span class="t">${s.time}</span><span class="w">${s.word}</span></li>`;
+    }).join('');
+    miniCar.style.left = idx < 0 ? '2%' : `calc(${(idx + .5) / STOPS.length * 100}% + ${10 - (idx + .5) / STOPS.length * 20}px)`;
+  }
+  function setSky(i) {
+    const s = STOPS[Math.max(0, i)];
+    stage.style.setProperty('--sky1', s.sky[0]);
+    stage.style.setProperty('--sky2', s.sky[1]);
+    stage.style.setProperty('--sun-top', s.sun + '%');
+  }
+  function makeSign(s) {
+    const el = document.createElement('div');
+    el.className = 'sign';
+    el.innerHTML = `<div class="p">P</div><div class="tm">${s.time}</div><div class="pl">${s.place}</div><div class="post"></div>`;
+    stage.insertBefore(el, car);
+    return el;
+  }
+  let toastTimer;
+  function toast(text, kind) {
+    clearTimeout(toastTimer);
+    toastEl.textContent = text; toastEl.className = `toast ${kind} show`;
+    toastTimer = setTimeout(() => { toastEl.className = `toast ${kind}`; }, 1300);
+  }
+  function confetti() {
+    if (reduce) return;
+    const box = document.createElement('div'); box.className = 'confetti';
+    const colors = ['#FF7A45', '#2FA866', '#F5B301', '#2F6FD6', '#E5484D', '#7FB2E5'];
+    for (let i = 0; i < 26; i++) {
+      const c = document.createElement('i');
+      c.style.left = Math.random() * 100 + '%';
+      c.style.background = colors[i % colors.length];
+      c.style.setProperty('--dx', (Math.random() * 120 - 60) + 'px');
+      c.style.setProperty('--r', (Math.random() * 720 - 360) + 'deg');
+      c.style.animationDelay = Math.random() * .3 + 's';
+      box.appendChild(c);
+    }
+    panel.appendChild(box);
+    setTimeout(() => box.remove(), 2200);
+  }
+  const timeLabel = t => `早上 ${t}`;
+  const shuffle = a => { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+
+  /* ---------- 開場 ---------- */
+  function showIntro() {
+    idx = -1; results = []; renderTrack(); setSky(0);
+    car.style.transform = 'translateX(-160%)';
+    panel.innerHTML = `<div class="intro">
+      <figure class="scene-card"><div class="clock">${timeLabel('7:00')}</div>${sceneSVG('wake', '小安在床上')}</figure>
+      <div>
+        <h2>早安！陪小安開車去上學</h2>
+        <p>小安的一天有七站。每到一站，小汽車會停下來，看看小安在做什麼，再從兩個字詞裡選出對的那一個。</p>
+        <ul class="howto">
+          <li><span class="b" style="background:var(--park)">P</span>到站停車，看動畫</li>
+          <li><span class="b" style="background:var(--car)">字</span>點出正確的字詞</li>
+          <li><span class="b" style="background:var(--go)">行</span>答對了，綠燈開車</li>
+        </ul>
+        <ul class="wordlist">${STOPS.map(s => `<li>${s.word}</li>`).join('')}</ul>
+        <button class="go pulse" id="startBtn"><span class="lamp"></span>開車出發</button>
+      </div></div>`;
+    $('#startBtn').onclick = () => { audio(); sfx.honk(); say('開車囉！'); drive(0, true); };
+  }
+
+  /* ---------- 開車 ---------- */
+  function drive(next, enter = false) {
+    if (busy) return; busy = true;
+    idx = next; tries = 0; renderTrack(); setSky(next);
+    const s = STOPS[next];
+    panel.innerHTML = `<div class="drive">${ICON.wheel}<div><p class="eyebrow">下一站</p><p class="next">${timeLabel(s.time)}</p></div></div>`;
+    toast('開車囉！', 'go');
+    const W = stage.clientWidth, D = W, dur = reduce ? 900 : 2600;
+    const ease = 'cubic-bezier(.45,0,.25,1)', fill = 'forwards';
+    car.classList.remove('brake'); car.classList.add('moving');
+    sfx.engine(dur / 1000);
+    const anims = [
+      town.animate([{ backgroundPositionX: off.town + 'px' }, { backgroundPositionX: off.town - D + 'px' }], { duration: dur, easing: ease, fill }),
+      hills.animate([{ backgroundPositionX: off.hills + 'px' }, { backgroundPositionX: off.hills - D * .35 + 'px' }], { duration: dur, easing: ease, fill }),
+      road.animate([{ backgroundPositionX: off.road + 'px, 0px' }, { backgroundPositionX: off.road - D + 'px, 0px' }], { duration: dur, easing: ease, fill }),
+    ];
+    const oldSign = sign;
+    if (oldSign) anims.push(oldSign.animate([{ transform: 'translateX(0)' }, { transform: `translateX(${-D}px)` }], { duration: dur, easing: ease, fill }));
+    sign = makeSign(s);
+    anims.push(sign.animate([{ transform: `translateX(${D}px)` }, { transform: 'translateX(0)' }], { duration: dur, easing: ease, fill }));
+    if (enter) {
+      car.style.transform = '';
+      anims.push(car.animate([{ transform: 'translateX(-160%)' }, { transform: 'translateX(0)' }], { duration: dur, easing: 'cubic-bezier(.2,.6,.3,1)', fill }));
+    }
+    Promise.all(anims.map(a => a.finished)).then(() => {
+      off.town -= D; off.hills -= D * .35; off.road -= D;
+      town.style.backgroundPositionX = off.town + 'px';
+      hills.style.backgroundPositionX = off.hills + 'px';
+      road.style.backgroundPositionX = off.road + 'px, 0px';
+      sign.style.transform = 'translateX(0)';
+      anims.forEach(a => a.cancel());
+      if (oldSign) oldSign.remove();
+      car.classList.remove('moving'); void car.offsetWidth; car.classList.add('brake');
+      sfx.brake(); toast('停車！', 'stop'); say('停車！');
+      busy = false;
+      setTimeout(() => showQuiz(next), reduce ? 200 : 650);
+    });
+  }
+
+  /* ---------- 題目 ---------- */
+  function showQuiz(i) {
+    const s = STOPS[i];
+    const others = STOPS.filter(x => x.word !== s.word);
+    opts = shuffle([s.word, others[Math.floor(Math.random() * others.length)].word]);
+    panel.innerHTML = `<div class="quiz">
+      <figure class="scene-card"><div class="clock">${timeLabel(s.time)}</div>${sceneSVG(s.id, '小安正在做一件事')}</figure>
+      <div class="ask">
+        <p class="q"><span>${s.q}</span><button class="ico" id="hearQ" aria-label="聽題目">${ICON.speaker}</button></p>
+        <div class="opts">${opts.map((w, k) => `<div class="opt"><button class="pick" id="opt${k}" data-w="${w}" aria-label="${w}">${wordHTML(w)}</button><button class="listen" data-say="${w}" aria-label="聽聽看「${w}」">${ICON.speaker}</button></div>`).join('')}</div>
+        <p class="fb" id="fb">看看圖，點一點正確的字詞。不會唸的話，按小喇叭聽聽看。</p>
+        <button class="go pulse" id="goBtn" hidden><span class="lamp"></span>${i < STOPS.length - 1 ? '綠燈了，開車！' : '看看今天的成果'}</button>
+      </div></div>`;
+    setTimeout(() => say(s.q), 500);
+    $('#hearQ').onclick = () => say(s.q);
+    panel.querySelectorAll('.listen').forEach(b => b.onclick = () => say(b.dataset.say));
+    panel.querySelectorAll('.pick').forEach(b => b.onclick = () => choose(b));
+    $('#goBtn').onclick = () => {
+      if (i < STOPS.length - 1) { sfx.honk(); say('開車囉！'); drive(i + 1); }
+      else showFinish();
+    };
+  }
+  function choose(btn) {
+    const s = STOPS[idx], w = btn.dataset.w, fb = $('#fb');
+    if (results[idx] != null) return;
+    if (w === s.word) {
+      results[idx] = tries === 0 ? 'gold' : 'retry';
+      btn.classList.add('right');
+      panel.querySelectorAll('.pick').forEach(b => b.disabled = true);
+      sfx.right(); confetti();
+      fb.innerHTML = `<span class="say">${s.say.replace(/\((.+?)\)/, '<mark>$1</mark>')}</span>`;
+      say('答對了！' + s.say.replace(/[()]/g, ''));
+      renderTrack();
+      const go = $('#goBtn'); go.hidden = false; go.focus({ preventScroll: true });
+    } else {
+      tries++;
+      btn.classList.remove('wrong'); void btn.offsetWidth; btn.classList.add('wrong');
+      btn.disabled = true;
+      sfx.wrong();
+      fb.innerHTML = `這是「${w}」。再看看小安在做什麼？`;
+      say(`這是${w}，再想想看。`);
+    }
+  }
+
+  /* ---------- 完成 ---------- */
+  function showFinish() {
+    idx = STOPS.length; renderTrack();
+    const gold = results.filter(r => r === 'gold').length;
+    panel.innerHTML = `<div class="finish">
+      <figure class="scene-card"><div class="clock">${timeLabel('8:30')}</div>${sceneSVG('class', '小安在教室舉手')}</figure>
+      <div>
+        <h2>到學校囉！你好棒！</h2>
+        <p>你陪小安走完早上的七站，學會了七個字詞，拿到 <strong>${gold}</strong> 顆金星。點一點字詞，可以再聽一次。</p>
+        <ul class="chips">${STOPS.map((s, i) => `<li><button data-say="${s.word}" aria-label="聽「${s.word}」">${ICON.star(results[i] === 'gold' ? '#F5B301' : '#BFC8D6')}${wordHTML(s.word)}</button></li>`).join('')}</ul>
+        <button class="go pulse" id="againBtn"><span class="lamp"></span>再玩一次</button>
+      </div></div>`;
+    confetti(); sfx.right(); say('到學校囉！你好棒！');
+    panel.querySelectorAll('.chips button').forEach(b => b.onclick = () => say(b.dataset.say));
+    $('#againBtn').onclick = () => {
+      if (sign) { sign.remove(); sign = null; }
+      showIntro();
+    };
+  }
+
+  /* ---------- 設定 ---------- */
+  $('#zyBtn').onclick = e => { zyOn = !zyOn; e.currentTarget.setAttribute('aria-pressed', zyOn); document.body.classList.toggle('no-zy', !zyOn); };
+  $('#sndBtn').onclick = e => { soundOn = !soundOn; e.currentTarget.setAttribute('aria-pressed', soundOn); if (!soundOn) { try { speechSynthesis.cancel(); } catch (x) {} } };
+
+  function start(data) {
+    if (data && typeof data.zyOn === 'boolean' && !data.zyOn) $('#zyBtn').click();
+    if (data && Number.isInteger(data.idx) && data.idx >= 0 && data.idx < STOPS.length) {
+      results = Array.isArray(data.results) ? data.results : [];
+      idx = data.idx; setSky(idx); renderTrack();
+      sign = makeSign(STOPS[idx]);
+      showQuiz(idx);
+    } else {
+      showIntro();
+    }
+  }
+  const hot = window.claude?.hot;
+  try { hot?.snapshot?.(() => ({ idx: idx >= 0 && idx < STOPS.length ? idx : -1, results, zyOn })); } catch (e) {}
+  hot?.ready ? hot.ready(start) : start(hot?.data ?? {});
+})();
+</script>
